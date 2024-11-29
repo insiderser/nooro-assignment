@@ -4,6 +4,7 @@ import androidx.compose.runtime.Immutable
 import com.example.weather.oleksandrBezushko.data.CurrentWeatherResponse.WindDirection
 import com.example.weather.oleksandrBezushko.model.Location
 import com.example.weather.oleksandrBezushko.model.Temperature
+import com.example.weather.oleksandrBezushko.model.TemperatureUnit
 
 @Immutable
 data class DetailsState(
@@ -23,6 +24,7 @@ data class DetailsState(
             val windDirection: WindDirection?,
             val uv: Float,
             val humidity: Int,
+            val temperatureUnit: TemperatureUnit,
         ) : LoadState
 
         data class Error(

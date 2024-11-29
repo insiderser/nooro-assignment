@@ -31,6 +31,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -72,6 +73,7 @@ fun DetailsScreen(
         state = state,
         onNavigateToSearch = onNavigateToSearch,
         onTryAgainClicked = { viewModel.refresh() },
+        onTemperatureUnitChanged = { viewModel.onTemperatureUnitChanged(it) },
         modifier = modifier,
     )
 }
@@ -81,6 +83,7 @@ private fun DetailsContent(
     state: DetailsState,
     onNavigateToSearch: () -> Unit,
     onTryAgainClicked: () -> Unit,
+    onTemperatureUnitChanged: (TemperatureUnit) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Scaffold(
@@ -111,6 +114,7 @@ private fun DetailsContent(
                 LoadedContent(
                     modifier = modifier.padding(innerPadding),
                     state = state.loadState,
+                    onTemperatureUnitChanged = onTemperatureUnitChanged,
                 )
             }
 
@@ -227,10 +231,11 @@ private fun ErrorContent(
 private fun LoadedContent(
     modifier: Modifier,
     state: DetailsState.LoadState.Loaded,
+    onTemperatureUnitChanged: (TemperatureUnit) -> Unit,
 ) {
     val locale = Locale.current.platformLocale
     val numbersFormatter = remember(locale) { DecimalFormat.getNumberInstance(locale) }
-    val temperatureUnit = remember(locale) { TemperatureUnit.get() }
+    val temperatureUnit = state.temperatureUnit
 
     Column(
         modifier
@@ -329,6 +334,14 @@ private fun LoadedContent(
                 WeatherDetail("Feels Like", "${numbersFormatter.format(state.feelsLike[temperatureUnit].toDouble())}°")
             }
         }
+
+        Switch(
+            checked = temperatureUnit == TemperatureUnit.CELSIUS,
+            onCheckedChange = { isChecked ->
+                val newUnit = if (isChecked) TemperatureUnit.CELSIUS else TemperatureUnit.FAHRENHEIT
+                onTemperatureUnitChanged(newUnit)
+            }
+        )
     }
 }
 
@@ -360,6 +373,7 @@ fun PreviewDetailsScreenNoCity() {
             state = DetailsState(loadState = DetailsState.LoadState.NoCity),
             onNavigateToSearch = {},
             onTryAgainClicked = {},
+            onTemperatureUnitChanged = {},
         )
     }
 }
@@ -372,6 +386,7 @@ fun PreviewDetailsScreenLoading() {
             state = DetailsState(loadState = DetailsState.LoadState.Loading),
             onNavigateToSearch = {},
             onTryAgainClicked = {},
+            onTemperatureUnitChanged = {},
         )
     }
 }
@@ -384,6 +399,7 @@ fun PreviewDetailsScreenError() {
             state = DetailsState(loadState = DetailsState.LoadState.Error("Error message")),
             onNavigateToSearch = {},
             onTryAgainClicked = {},
+            onTemperatureUnitChanged = {},
         )
     }
 }
@@ -403,10 +419,12 @@ fun PreviewDetailsScreenLoaded() {
                     windDirection = CurrentWeatherResponse.WindDirection.N,
                     uv = 5f,
                     humidity = 50,
+                    temperatureUnit = TemperatureUnit.CELSIUS,
                 )
             ),
             onNavigateToSearch = {},
             onTryAgainClicked = {},
+            onTemperatureUnitChanged = {},
         )
     }
 }

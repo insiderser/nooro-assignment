@@ -6,13 +6,18 @@ import com.example.weather.oleksandrBezushko.data.AppStorage
 import com.example.weather.oleksandrBezushko.data.WeatherAPI
 import com.example.weather.oleksandrBezushko.model.Location
 import com.example.weather.oleksandrBezushko.model.Temperature
+import com.example.weather.oleksandrBezushko.model.TemperatureUnit
 import com.example.weather.oleksandrBezushko.utils.ObserveIsNetworkAvailable
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -24,6 +29,10 @@ class DetailsViewModel @Inject constructor(
     observeIsNetworkAvailable: ObserveIsNetworkAvailable,
 ) : ViewModel() {
 
+    private val temperatureUnit = storage.temperatureUnitFlow
+        .map { it ?: TemperatureUnit.get() }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, null)
+
     private val _stateFlow = MutableStateFlow(DetailsState())
     val stateFlow: StateFlow<DetailsState> = _stateFlow
 
@@ -33,6 +42,22 @@ class DetailsViewModel @Inject constructor(
         observeIsNetworkAvailable().drop(1).onEach { isNetworkAvailable ->
             if (isNetworkAvailable && stateFlow.value.loadState is DetailsState.LoadState.Error) {
                 refresh()
+            }
+        }.launchIn(viewModelScope)
+
+        temperatureUnit.onEach { unit ->
+            if (unit != null) {
+                _stateFlow.update { state ->
+                    if (state.loadState is DetailsState.LoadState.Loaded) {
+                        state.copy(
+                            loadState = state.loadState.copy(
+                                temperatureUnit = unit,
+                            )
+                        )
+                    } else {
+                        state
+                    }
+                }
             }
         }.launchIn(viewModelScope)
     }
@@ -58,6 +83,7 @@ class DetailsViewModel @Inject constructor(
                 }
                 return@launch
             }
+            val temperatureUnit = temperatureUnit.first { it != null }!!
             val cityData = DetailsState.LoadState.Loaded(
                 location = Location(savedCity),
                 temperature = Temperature(
@@ -73,8 +99,15 @@ class DetailsViewModel @Inject constructor(
                 windDirection = response.current.windDir,
                 uv = response.current.uv,
                 humidity = response.current.humidity,
+                temperatureUnit = temperatureUnit,
             )
             _stateFlow.update { it.copy(loadState = cityData) }
+        }
+    }
+
+    fun onTemperatureUnitChanged(unit: TemperatureUnit) {
+        viewModelScope.launch {
+            storage.saveTemperatureUnit(unit)
         }
     }
 }
